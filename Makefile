@@ -46,6 +46,7 @@ deps:
 	@go mod download
 	@go install github.com/goreleaser/goreleaser@latest
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go mod tidy
 
 # Run linter
 lint:
