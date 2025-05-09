@@ -55,6 +55,7 @@ func serve() error {
 	api.HandleFunc("/issues", issueHandler.TrackIssue).Methods("POST")
 	api.HandleFunc("/issues/{key}", issueHandler.GetIssue).Methods("GET")
 	api.HandleFunc("/issues/{key}", issueHandler.DeleteIssue).Methods("DELETE")
+	api.HandleFunc("/issues/{key}/status", issueHandler.UpdateIssueStatus).Methods("PUT")
 	api.HandleFunc("/issues/{key}/subscribe", issueHandler.SubscribeToIssue).Methods("POST")
 	api.HandleFunc("/issues/{key}/unsubscribe", issueHandler.UnsubscribeFromIssue).Methods("DELETE")
 

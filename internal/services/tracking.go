@@ -12,11 +12,11 @@ import (
 // TrackingService handles the business logic for tracking issues and pull requests
 type TrackingService struct {
 	storage *storage.Storage
-	jira    *jira.Client
+	jira    jira.JiraClient
 }
 
 // NewTrackingService creates a new tracking service
-func NewTrackingService(storage *storage.Storage, jira *jira.Client) *TrackingService {
+func NewTrackingService(storage *storage.Storage, jira jira.JiraClient) *TrackingService {
 	return &TrackingService{
 		storage: storage,
 		jira:    jira,
@@ -32,7 +32,7 @@ func (s *TrackingService) TrackIssue(ctx context.Context, jiraURL string) (*mode
 	}
 
 	// Check if issue already exists
-	existingIssue, err := s.storage.GetIssueByKey(ctx, issue.Key)
+	existingIssue, err := s.storage.GetIssue(issue.Key)
 	if err == nil {
 		// Update existing issue
 		existingIssue.Title = issue.Title
@@ -69,12 +69,16 @@ func (s *TrackingService) ListIssues(ctx context.Context) ([]*models.Issue, erro
 
 // GetIssue retrieves a tracked issue by its key
 func (s *TrackingService) GetIssue(ctx context.Context, key string) (*models.Issue, error) {
-	return s.storage.GetIssueByKey(ctx, key)
+	issue, err := s.storage.GetIssue(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get issue: %w", err)
+	}
+	return issue, nil
 }
 
 // SubscribeToIssue subscribes a user to an issue
 func (s *TrackingService) SubscribeToIssue(ctx context.Context, key string, userID int64) (*models.Subscription, error) {
-	issue, err := s.storage.GetIssueByKey(ctx, key)
+	issue, err := s.storage.GetIssue(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue: %w", err)
 	}
@@ -94,7 +98,7 @@ func (s *TrackingService) SubscribeToIssue(ctx context.Context, key string, user
 
 // UnsubscribeFromIssue unsubscribes a user from an issue
 func (s *TrackingService) UnsubscribeFromIssue(ctx context.Context, key string, userID int64) error {
-	issue, err := s.storage.GetIssueByKey(ctx, key)
+	issue, err := s.storage.GetIssue(key)
 	if err != nil {
 		return fmt.Errorf("failed to get issue: %w", err)
 	}
@@ -109,7 +113,7 @@ func (s *TrackingService) UnsubscribeFromIssue(ctx context.Context, key string, 
 
 // ListPullRequests returns all pull requests for an issue
 func (s *TrackingService) ListPullRequests(ctx context.Context, key string) ([]*models.PullRequest, error) {
-	issue, err := s.storage.GetIssueByKey(ctx, key)
+	issue, err := s.storage.GetIssue(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue: %w", err)
 	}
@@ -119,7 +123,7 @@ func (s *TrackingService) ListPullRequests(ctx context.Context, key string) ([]*
 
 // AddPullRequest adds a pull request to an issue
 func (s *TrackingService) AddPullRequest(ctx context.Context, key string, pr *models.PullRequest) error {
-	issue, err := s.storage.GetIssueByKey(ctx, key)
+	issue, err := s.storage.GetIssue(key)
 	if err != nil {
 		return fmt.Errorf("failed to get issue: %w", err)
 	}
@@ -130,7 +134,7 @@ func (s *TrackingService) AddPullRequest(ctx context.Context, key string, pr *mo
 
 // UpdatePullRequest updates a pull request
 func (s *TrackingService) UpdatePullRequest(ctx context.Context, key string, prNumber int, pr *models.PullRequest) error {
-	issue, err := s.storage.GetIssueByKey(ctx, key)
+	issue, err := s.storage.GetIssue(key)
 	if err != nil {
 		return fmt.Errorf("failed to get issue: %w", err)
 	}
@@ -175,7 +179,7 @@ func (s *TrackingService) DeleteSubscription(ctx context.Context, id int64) erro
 
 // HasUnmergedPullRequests checks if an issue has any unmerged pull requests
 func (s *TrackingService) HasUnmergedPullRequests(ctx context.Context, key string) (bool, error) {
-	issue, err := s.storage.GetIssueByKey(ctx, key)
+	issue, err := s.storage.GetIssue(key)
 	if err != nil {
 		return false, fmt.Errorf("failed to get issue: %w", err)
 	}
@@ -200,9 +204,20 @@ func (s *TrackingService) UpdateIssue(ctx context.Context, issue *models.Issue) 
 
 // UpdateIssueStatus updates the status of an issue
 func (s *TrackingService) UpdateIssueStatus(ctx context.Context, issue *models.Issue, status string) error {
+	// Update the issue status
 	issue.Status = status
 	if err := s.storage.UpdateIssue(issue); err != nil {
 		return fmt.Errorf("failed to update issue status: %w", err)
 	}
+
 	return nil
+}
+
+// GetIssueByKey retrieves an issue by its key
+func (s *TrackingService) GetIssueByKey(ctx context.Context, key string) (*models.Issue, error) {
+	issue, err := s.storage.GetIssue(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get issue: %w", err)
+	}
+	return issue, nil
 }

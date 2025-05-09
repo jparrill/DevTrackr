@@ -136,7 +136,8 @@ func (h *IssueHandler) TrackIssue(w http.ResponseWriter, r *http.Request) {
 
 // DeleteIssue handles DELETE requests to remove a tracked issue
 func (h *IssueHandler) DeleteIssue(w http.ResponseWriter, r *http.Request) {
-	key := r.URL.Query().Get("key")
+	vars := mux.Vars(r)
+	key := vars["key"]
 	if key == "" {
 		http.Error(w, "Issue key is required", http.StatusBadRequest)
 		return
@@ -148,4 +149,43 @@ func (h *IssueHandler) DeleteIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// UpdateIssueStatus handles PUT /api/v1/issues/{key}/status
+func (h *IssueHandler) UpdateIssueStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+
+	// Get the issue first
+	issue, err := h.trackingService.GetIssue(r.Context(), key)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if issue == nil {
+		http.Error(w, "Issue not found", http.StatusNotFound)
+		return
+	}
+
+	// Parse the request body
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Status == "" {
+		http.Error(w, "Status is required", http.StatusBadRequest)
+		return
+	}
+
+	// Update the issue status
+	if err := h.trackingService.UpdateIssueStatus(r.Context(), issue, req.Status); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

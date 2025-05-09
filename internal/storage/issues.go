@@ -2,22 +2,21 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/jparrill/devtrackr/internal/models"
 )
 
-// GetIssueByKey retrieves an issue by its key
-func (s *Storage) GetIssueByKey(ctx context.Context, key string) (*models.Issue, error) {
-	var issue models.Issue
+// GetIssue retrieves an issue by its key
+func (s *Storage) GetIssue(key string) (*models.Issue, error) {
+	query := `
+		SELECT id, key, title, status, jira_url, created_at, updated_at
+		FROM issues
+		WHERE key = ?
+	`
+	issue := &models.Issue{}
 	var createdAt, updatedAt string
-
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, key, title, status, jira_url, created_at, updated_at
-		FROM issues WHERE key = ?`,
-		key,
-	).Scan(
+	err := s.db.QueryRow(query, key).Scan(
 		&issue.ID,
 		&issue.Key,
 		&issue.Title,
@@ -26,23 +25,13 @@ func (s *Storage) GetIssueByKey(ctx context.Context, key string) (*models.Issue,
 		&createdAt,
 		&updatedAt,
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse timestamps
-	issue.CreatedAt, err = time.Parse(time.RFC3339, createdAt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse created_at: %w", err)
-	}
-
-	issue.UpdatedAt, err = time.Parse(time.RFC3339, updatedAt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse updated_at: %w", err)
-	}
-
-	return &issue, nil
+	issue.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+	issue.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	return issue, nil
 }
 
 // CreateIssue creates a new issue in the database
