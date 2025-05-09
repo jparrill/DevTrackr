@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jparrill/devtrackr/internal/jira"
 	"github.com/jparrill/devtrackr/internal/models"
@@ -26,6 +27,7 @@ type Storage interface {
 	ListSubscriptions(ctx context.Context, userID int64) ([]models.Subscription, error)
 	GetSubscriptionByID(ctx context.Context, id int64) (*models.Subscription, error)
 	UpdateSubscription(ctx context.Context, sub *models.Subscription) error
+	GetIssueByKey(key string) (*models.Issue, error)
 }
 
 // TrackingService handles the business logic for tracking issues and pull requests
@@ -42,28 +44,41 @@ func NewTrackingService(storage Storage, jira jira.JiraClient) *TrackingService 
 	}
 }
 
-// TrackIssue tracks a new issue from Jira
+// TrackIssue tracks a Jira issue by its URL
 func (s *TrackingService) TrackIssue(ctx context.Context, jiraURL string) (*models.Issue, error) {
 	// Get issue from Jira
-	issue, err := s.jira.GetIssue(ctx, jiraURL)
+	jiraIssue, err := s.jira.GetIssue(ctx, jiraURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue from Jira: %w", err)
 	}
 
 	// Check if issue already exists
-	existingIssue, err := s.storage.GetIssue(issue.Key)
+	existingIssue, err := s.storage.GetIssueByKey(jiraIssue.Key)
 	if err == nil {
-		// Update existing issue
-		existingIssue.Title = issue.Title
-		existingIssue.Status = issue.Status
-		existingIssue.JiraURL = issue.JiraURL
+		// Issue already exists, update it
+		existingIssue.Title = jiraIssue.Title
+		existingIssue.Status = jiraIssue.Status
+		existingIssue.UpdatedAt = time.Now()
+
 		if err := s.storage.UpdateIssue(existingIssue); err != nil {
 			return nil, fmt.Errorf("failed to update issue: %w", err)
 		}
+
 		return existingIssue, nil
 	}
 
 	// Create new issue
+	issue := &models.Issue{
+		Key:             jiraIssue.Key,
+		Title:           jiraIssue.Title,
+		Status:          jiraIssue.Status,
+		JiraURL:         jiraURL,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+		PollingInterval: 300, // Default to 5 minutes (300 seconds)
+		LastPolledAt:    time.Now(),
+	}
+
 	if err := s.storage.CreateIssue(issue); err != nil {
 		return nil, fmt.Errorf("failed to create issue: %w", err)
 	}
@@ -243,4 +258,21 @@ func (s *TrackingService) GetIssueByKey(ctx context.Context, key string) (*model
 		return nil, fmt.Errorf("failed to get issue: %w", err)
 	}
 	return issue, nil
+}
+
+// UpdateIssuePollingInterval updates the polling interval for an issue
+func (s *TrackingService) UpdateIssuePollingInterval(ctx context.Context, key string, interval int) error {
+	issue, err := s.storage.GetIssue(key)
+	if err != nil {
+		return fmt.Errorf("failed to get issue: %w", err)
+	}
+
+	issue.PollingInterval = interval
+	issue.LastPolledAt = time.Now()
+
+	if err := s.storage.UpdateIssue(issue); err != nil {
+		return fmt.Errorf("failed to update issue polling interval: %w", err)
+	}
+
+	return nil
 }

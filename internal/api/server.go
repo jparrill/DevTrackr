@@ -1,11 +1,11 @@
 package api
 
 import (
-	"log"
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/jparrill/devtrackr/internal/api/handlers"
 	"github.com/jparrill/devtrackr/internal/services"
 )
 
@@ -28,35 +28,107 @@ func NewServer(trackingService *services.TrackingService) *Server {
 
 // setupRoutes configures all the API routes
 func (s *Server) setupRoutes() {
-	// Create handlers
-	issueHandler := handlers.NewIssueHandler(s.trackingService)
-	prHandler := handlers.NewPullRequestHandler(s.trackingService)
-	subHandler := handlers.NewSubscriptionHandler(s.trackingService)
-
 	// API v1 routes
 	v1 := s.router.PathPrefix("/api/v1").Subrouter()
 
 	// Issue routes
-	v1.HandleFunc("/issues", issueHandler.ListIssues).Methods("GET")
-	v1.HandleFunc("/issues", issueHandler.TrackIssue).Methods("POST")
-	v1.HandleFunc("/issues/{key}", issueHandler.GetIssue).Methods("GET")
-	v1.HandleFunc("/issues/{key}/subscribe", issueHandler.SubscribeToIssue).Methods("POST")
-	v1.HandleFunc("/issues/{key}/unsubscribe", issueHandler.UnsubscribeFromIssue).Methods("DELETE")
-
-	// Pull request routes
-	v1.HandleFunc("/issues/{key}/prs", prHandler.ListPullRequests).Methods("GET")
-	v1.HandleFunc("/issues/{key}/prs", prHandler.AddPullRequest).Methods("POST")
-	v1.HandleFunc("/issues/{key}/prs/{prNumber}", prHandler.UpdatePullRequest).Methods("PUT")
-
-	// Subscription routes
-	v1.HandleFunc("/subscriptions", subHandler.ListSubscriptions).Methods("GET")
-	v1.HandleFunc("/subscriptions/{id}", subHandler.GetSubscription).Methods("GET")
-	v1.HandleFunc("/subscriptions/{id}", subHandler.UpdateSubscription).Methods("PUT")
-	v1.HandleFunc("/subscriptions/{id}", subHandler.DeleteSubscription).Methods("DELETE")
+	v1.HandleFunc("/issues", s.listIssues).Methods("GET")
+	v1.HandleFunc("/issues", s.createIssue).Methods("POST")
+	v1.HandleFunc("/issues/{key}", s.getIssue).Methods("GET")
+	v1.HandleFunc("/issues/{key}", s.deleteIssue).Methods("DELETE")
+	v1.HandleFunc("/issues/{key}/polling-interval", s.updatePollingInterval).Methods("PUT")
 }
 
 // Start starts the API server
 func (s *Server) Start(addr string) error {
-	log.Printf("Starting API server on %s", addr)
+	fmt.Printf("API server starting on %s\n", addr)
 	return http.ListenAndServe(addr, s.router)
+}
+
+// listIssues returns all tracked issues
+func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) {
+	issues, err := s.trackingService.ListIssues(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(issues)
+}
+
+// createIssue creates a new tracked issue
+func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		JiraURL string `json:"jira_url"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	issue, err := s.trackingService.TrackIssue(r.Context(), req.JiraURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(issue)
+}
+
+// getIssue returns a specific issue
+func (s *Server) getIssue(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+
+	issue, err := s.trackingService.GetIssue(r.Context(), key)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(issue)
+}
+
+// deleteIssue deletes a tracked issue
+func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+
+	if err := s.trackingService.DeleteIssue(r.Context(), key); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// updatePollingInterval updates the polling interval for an issue
+func (s *Server) updatePollingInterval(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+
+	var req struct {
+		PollingInterval int `json:"polling_interval"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.PollingInterval < 0 {
+		http.Error(w, "Polling interval must be non-negative", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.trackingService.UpdateIssuePollingInterval(r.Context(), key, req.PollingInterval); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

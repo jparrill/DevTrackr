@@ -1,18 +1,18 @@
 version: '3.8'
 
 services:
-  app:
+  devtrackr:
     build:
       context: .
       dockerfile: Dockerfile
+    image: devtrackr
     ports:
       - "8080:8080"
-    volumes:
-      - ./data:/app/data
     environment:
-      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
-      - JIRA_EMAIL=${JIRA_EMAIL}
-      - JIRA_URL=${JIRA_URL}
+      - JIRA_URL=https://issues.redhat.com
+      - JIRA_TOKEN=${JIRA_TOKEN:-}
+    volumes:
+      - ./.devtrackr:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://localhost:8080/health"]

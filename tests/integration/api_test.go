@@ -35,7 +35,7 @@ type createIssueRequest struct {
 
 func setupTestServer(t *testing.T, mockStatus string) (*httptest.Server, func()) {
 	// Inicializar storage
-	db, err := storage.NewStorage("test.db")
+	db, err := storage.NewSQLiteStorage("test.db")
 	require.NoError(t, err)
 
 	// Crear mock del cliente de Jira

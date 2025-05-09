@@ -1,19 +1,6 @@
 package models
 
-import (
-	"time"
-)
-
-// Issue represents a Jira issue being tracked
-type Issue struct {
-	ID        int64     `json:"id"`
-	Key       string    `json:"key"`      // Jira issue key (e.g., "PROJ-123")
-	Title     string    `json:"title"`    // Issue title
-	Status    string    `json:"status"`   // Current status in Jira
-	JiraURL   string    `json:"jira_url"` // URL to the Jira issue
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
+import "time"
 
 // PullRequest represents a pull request associated with an issue
 type PullRequest struct {
@@ -43,12 +30,7 @@ const (
 	PRStatusApproved PRStatus = "approved"
 )
 
-// Subscription represents a user's subscription to an issue
-type Subscription struct {
-	ID        int64     `json:"id"`
-	IssueID   int64     `json:"issue_id"`
-	UserID    int64     `json:"user_id"` // User identifier
-	Active    bool      `json:"active"`  // Whether the subscription is active
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+// TableName returns the table name for the PullRequest model
+func (PullRequest) TableName() string {
+	return "pull_requests"
 }

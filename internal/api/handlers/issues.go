@@ -198,3 +198,31 @@ func (h *IssueHandler) UpdateIssueStatus(w http.ResponseWriter, r *http.Request)
 
 	w.WriteHeader(http.StatusOK)
 }
+
+// UpdatePollingInterval handles PUT /api/v1/issues/{key}/polling-interval
+func (h *IssueHandler) UpdatePollingInterval(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+
+	// Parse the request body
+	var req struct {
+		PollingInterval int `json:"polling_interval"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.PollingInterval < 0 {
+		http.Error(w, "Polling interval must be non-negative", http.StatusBadRequest)
+		return
+	}
+
+	// Update the polling interval
+	if err := h.trackingService.UpdateIssuePollingInterval(r.Context(), key, req.PollingInterval); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

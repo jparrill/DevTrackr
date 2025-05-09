@@ -1,4 +1,4 @@
-.PHONY: build clean test release release-local run lint deps dev help verify
+.PHONY: build clean test release release-local run lint deps dev help verify docker-run docker-stop
 
 # Build variables
 BINARY_NAME=devtrackr
@@ -81,6 +81,22 @@ release-snapshot:
 	@echo "Creating release snapshot..."
 	@goreleaser release --snapshot --rm-dist
 
+# Run the service using docker-compose
+docker-run:
+	@if [ -z "$(JIRA_TOKEN)" ]; then \
+		echo "Warning: JIRA_TOKEN is not set. The service may not work correctly."; \
+		echo "You can set it with: export JIRA_TOKEN=<your_token_here>"; \
+	fi
+	@echo "Starting DevTrackr service with docker-compose..."
+	docker-compose up -d
+	@echo "Service is running on http://localhost:8080"
+
+# Stop the docker-compose services
+docker-stop:
+	@echo "Stopping DevTrackr service..."
+	docker-compose down
+	@echo "Service stopped"
+
 # Help target
 help:
 	@echo "Available targets:"
@@ -96,3 +112,6 @@ help:
 	@echo "  release        - Create a release"
 	@echo "  release-local  - Create a local release"
 	@echo "  release-snapshot - Create a release snapshot"
+	@echo "  docker-run     - Run the service using docker-compose"
+	@echo "  docker-stop    - Stop the docker-compose services"
+	@echo "  help           - Display this help screen"
