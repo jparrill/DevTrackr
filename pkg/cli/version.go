@@ -13,7 +13,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version number of DevTrackr",
 	Long:  `Display the version number of DevTrackr and exit.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("DevTrackr version %s\n", version)
+		fmt.Fprintf(cmd.OutOrStdout(), "DevTrackr version %s\n", version)
 	},
 }
 
