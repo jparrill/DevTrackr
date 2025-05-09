@@ -23,3 +23,9 @@ go.work.sum
 
 # env file
 .env
+
+# DDBB
+*.db
+
+# Binaries
+bin/
