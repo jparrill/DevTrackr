@@ -34,7 +34,10 @@ func (h *PullRequestHandler) ListPullRequests(w http.ResponseWriter, r *http.Req
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(prs)
+	if err := json.NewEncoder(w).Encode(prs); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // AddPullRequest handles POST /api/v1/issues/{key}/pull-requests
@@ -42,20 +45,37 @@ func (h *PullRequestHandler) AddPullRequest(w http.ResponseWriter, r *http.Reque
 	vars := mux.Vars(r)
 	key := vars["key"]
 
-	var pr models.PullRequest
-	if err := json.NewDecoder(r.Body).Decode(&pr); err != nil {
+	var req struct {
+		Number       int    `json:"number"`
+		Repository   string `json:"repository"`
+		Title        string `json:"title"`
+		URL          string `json:"url"`
+		TargetBranch string `json:"target_branch"`
+		IsBackport   bool   `json:"is_backport"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.trackingService.AddPullRequest(r.Context(), key, &pr); err != nil {
+	pr, err := h.trackingService.AddPullRequest(r.Context(), key, &models.PullRequest{
+		Number:       req.Number,
+		Repository:   req.Repository,
+		Title:        req.Title,
+		URL:          req.URL,
+		TargetBranch: req.TargetBranch,
+		IsBackport:   req.IsBackport,
+	})
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(pr)
+	if err := json.NewEncoder(w).Encode(pr); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // UpdatePullRequest handles PUT /api/v1/issues/{key}/pull-requests/{number}
@@ -80,5 +100,8 @@ func (h *PullRequestHandler) UpdatePullRequest(w http.ResponseWriter, r *http.Re
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(pr)
+	if err := json.NewEncoder(w).Encode(pr); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }

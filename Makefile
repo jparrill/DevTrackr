@@ -1,4 +1,4 @@
-.PHONY: build clean test release release-local run lint deps dev help
+.PHONY: build clean test release release-local run lint deps dev help verify
 
 # Build variables
 BINARY_NAME=devtrackr
@@ -53,6 +53,10 @@ lint:
 	@echo "Running linter..."
 	@golangci-lint run
 
+# Verify code quality and tests
+verify: deps lint test
+	@echo "Verification completed successfully"
+
 # Create a release
 release:
 	@if [ -z "$(GITHUB_TOKEN)" ]; then \
@@ -88,6 +92,7 @@ help:
 	@echo "  dev            - Run in development mode with hot reload"
 	@echo "  deps           - Install dependencies"
 	@echo "  lint           - Run linter"
+	@echo "  verify         - Run deps, lint and test in sequence"
 	@echo "  release        - Create a release"
 	@echo "  release-local  - Create a local release"
 	@echo "  release-snapshot - Create a release snapshot"

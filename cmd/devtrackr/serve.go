@@ -9,6 +9,7 @@ import (
 	"github.com/jparrill/devtrackr/internal/jira"
 	"github.com/jparrill/devtrackr/internal/services"
 	"github.com/jparrill/devtrackr/internal/storage"
+	"github.com/jparrill/devtrackr/pkg/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +25,7 @@ var serveCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(serveCmd)
+	cli.RootCmd().AddCommand(serveCmd)
 }
 
 func serve() error {

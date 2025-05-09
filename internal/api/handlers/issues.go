@@ -9,7 +9,7 @@ import (
 	"github.com/jparrill/devtrackr/internal/services"
 )
 
-// IssueHandler handles issue-related HTTP requests
+// IssueHandler handles HTTP requests for issues
 type IssueHandler struct {
 	trackingService *services.TrackingService
 }
@@ -30,7 +30,10 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(issues)
+	if err := json.NewEncoder(w).Encode(issues); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // GetIssue handles GET /api/v1/issues/{key}
@@ -49,7 +52,10 @@ func (h *IssueHandler) GetIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(issue)
+	if err := json.NewEncoder(w).Encode(issue); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // SubscribeToIssue handles POST /api/v1/issues/{key}/subscribe
@@ -71,8 +77,10 @@ func (h *IssueHandler) SubscribeToIssue(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(sub)
+	if err := json.NewEncoder(w).Encode(sub); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // UnsubscribeFromIssue handles DELETE /api/v1/issues/{key}/unsubscribe
@@ -107,13 +115,11 @@ func (h *IssueHandler) UnsubscribeFromIssue(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
-type trackIssueRequest struct {
-	JiraURL string `json:"jira_url"`
-}
-
-// TrackIssue handles POST requests to track a new Jira issue
+// TrackIssue handles POST /api/v1/issues
 func (h *IssueHandler) TrackIssue(w http.ResponseWriter, r *http.Request) {
-	var req trackIssueRequest
+	var req struct {
+		JiraURL string `json:"jira_url"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -131,7 +137,10 @@ func (h *IssueHandler) TrackIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(issue)
+	if err := json.NewEncoder(w).Encode(issue); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // DeleteIssue handles DELETE requests to remove a tracked issue

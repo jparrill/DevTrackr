@@ -16,6 +16,11 @@ a centralized way to manage and track the progress of features and bug fixes
 across different releases.`,
 }
 
+// RootCmd returns the root command
+func RootCmd() *cobra.Command {
+	return rootCmd
+}
+
 // Execute executes the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {

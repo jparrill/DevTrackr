@@ -122,14 +122,18 @@ func (s *TrackingService) ListPullRequests(ctx context.Context, key string) ([]*
 }
 
 // AddPullRequest adds a pull request to an issue
-func (s *TrackingService) AddPullRequest(ctx context.Context, key string, pr *models.PullRequest) error {
+func (s *TrackingService) AddPullRequest(ctx context.Context, key string, pr *models.PullRequest) (*models.PullRequest, error) {
 	issue, err := s.storage.GetIssue(key)
 	if err != nil {
-		return fmt.Errorf("failed to get issue: %w", err)
+		return nil, fmt.Errorf("failed to get issue: %w", err)
 	}
 
 	pr.IssueID = issue.ID
-	return s.storage.CreatePullRequest(ctx, pr)
+	if err := s.storage.CreatePullRequest(ctx, pr); err != nil {
+		return nil, fmt.Errorf("failed to create pull request: %w", err)
+	}
+
+	return pr, nil
 }
 
 // UpdatePullRequest updates a pull request

@@ -24,7 +24,6 @@ func NewSubscriptionHandler(trackingService *services.TrackingService) *Subscrip
 
 // ListSubscriptions handles GET /api/v1/subscriptions
 func (h *SubscriptionHandler) ListSubscriptions(w http.ResponseWriter, r *http.Request) {
-	// Get user ID from request context or header
 	userID, err := strconv.ParseInt(r.Header.Get("X-User-ID"), 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
@@ -38,7 +37,10 @@ func (h *SubscriptionHandler) ListSubscriptions(w http.ResponseWriter, r *http.R
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(subs)
+	if err := json.NewEncoder(w).Encode(subs); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // GetSubscription handles GET /api/v1/subscriptions/{id}
@@ -61,7 +63,10 @@ func (h *SubscriptionHandler) GetSubscription(w http.ResponseWriter, r *http.Req
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sub)
+	if err := json.NewEncoder(w).Encode(sub); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // UpdateSubscription handles PUT /api/v1/subscriptions/{id}
@@ -85,7 +90,10 @@ func (h *SubscriptionHandler) UpdateSubscription(w http.ResponseWriter, r *http.
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sub)
+	if err := json.NewEncoder(w).Encode(sub); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // DeleteSubscription handles DELETE /api/v1/subscriptions/{id}
